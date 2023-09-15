@@ -36,4 +36,9 @@ public class DBConstants {
 			+ " AND (PD.START_DATE=? AND PD.PERIOD_TYPE='Q') AND COS.STATUS='ACTIV' AND COS.GEO_LEVEL='W'"
 			+ " AND CKEY.PACK_ID=COS.PACK_ID AND PD.PERIOD_ID=COS.PERIOD_ID";
 
+	
+	// Pricing
+	
+	public static final String FIND_SELECT_T_PERIOD_ID = "SELECT * FROM T_PERIOD WHERE START_DATE IN(?)";
+	public static final String FIND_ALL_SKU_COUNTRY_PERIOD_ID = "select * from t_cos_key where pack_id in (select distinct(pack_id) from t_cos where period_id=? and geo_code=? and status='ACTIV')";
 }

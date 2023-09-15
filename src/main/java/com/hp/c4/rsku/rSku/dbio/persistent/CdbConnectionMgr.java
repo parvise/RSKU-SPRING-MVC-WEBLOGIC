@@ -1,5 +1,7 @@
 package com.hp.c4.rsku.rSku.dbio.persistent;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -14,11 +16,8 @@ import java.util.Properties;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
-import com.hp.c4.rsku.rSku.rest.epam.api.C4EpamAPIPassword;
-import com.hp.c4.rsku.rSku.rest.epam.api.Client;
+import com.hp.c4.rsku.rSku.rest.epam.api.C4EpamApi;
 import com.hp.c4.rsku.rSku.rest.epam.api.Client.APIException;
-import com.hp.c4.rsku.rSku.rest.epam.api.json.Json;
-import com.hp.c4.rsku.rSku.rest.epam.api.json.JsonObject;
 
 import oracle.jdbc.pool.OracleDataSource;
 import sun.misc.BASE64Decoder;
@@ -35,6 +34,18 @@ final public class CdbConnectionMgr {
 	private Hashtable<String, OracleDataSource> htDataSourceList = new Hashtable<String, OracleDataSource>();
 
 	private static CdbConnectionMgr mgr = new CdbConnectionMgr();
+	private String C4_RSKU_ENV;
+	private static Map<String, String> EPAM_API_MAP = new HashMap<String, String>();
+
+	private static String EPAM_C4_API_HOST_NAME_LLB = "epam.api.host.name.llb";
+	private static String EPAM_C4_API_HOST_NAME_PWD_CACHE = "epam.api.host.name.pwd.cache";
+	private static String EPAM_C4_API_KEY = "epam.api.key";
+	private static String EPAM_C4_API_KEY_STORE_PWD = "epam.api.keystore.password";
+	private static String EPAM_C4_API_KEY_STORE_FILE = "epam.api.keystore.file.location";
+	private static String EPAM_C4_API_RUN_AS_USER = "epam.api.runas.user";
+
+	static Properties prop = new Properties();
+	private String PATH = "D:/Pervez/C4/RSKU_Project/epam_config.properties";
 
 	private CdbConnectionMgr() {
 	}
@@ -43,8 +54,8 @@ final public class CdbConnectionMgr {
 		return mgr;
 	}
 
-	public void createPool(String name, String dbprop)
-			throws SQLException, IOException {
+	public void createPool(String name, String dbprop, String C4_RSKU_ENV) throws SQLException, IOException {
+		this.C4_RSKU_ENV = C4_RSKU_ENV;
 		CdbProperties db1 = getProperties(dbprop);
 
 		// Biswa: String name is passed to set as cache name on data source
@@ -60,6 +71,34 @@ final public class CdbConnectionMgr {
 		return new CdbProperties(prop);
 	}
 
+	private Map<String, String> initEpamApiMap() {
+		try {
+			PATH = "D:/Pervez/C4/RSKU_Project/epam_config_" + C4_RSKU_ENV + ".properties";
+			prop.load(new FileInputStream(PATH));
+			mLogger.info("EPam Property File Path : " + PATH);
+			// Enumeration<Object> enum0 = prop.keys();
+//			while (enum0.hasMoreElements()) {
+//				String key = (String) enum0.nextElement();
+//				mLogger.info("TEsting.." + key + ":" + prop.getProperty(key));
+//			}
+
+			EPAM_API_MAP.put("EPAM_C4_API_KEY", prop.getProperty(EPAM_C4_API_KEY));
+			EPAM_API_MAP.put("EPAM_C4_API_RUN_AS_USER", prop.getProperty(EPAM_C4_API_RUN_AS_USER));
+
+			EPAM_API_MAP.put("EPAM_C4_API_HOST_NAME_LLB", prop.getProperty(EPAM_C4_API_HOST_NAME_LLB));
+			EPAM_API_MAP.put("EPAM_C4_API_HOST_NAME_PWD_CACHE", prop.getProperty(EPAM_C4_API_HOST_NAME_PWD_CACHE));
+
+			EPAM_API_MAP.put("EPAM_C4_API_KEY_STORE_PWD", prop.getProperty(EPAM_C4_API_KEY_STORE_PWD));
+			EPAM_API_MAP.put("EPAM_C4_API_KEY_STORE_FILE", prop.getProperty(EPAM_C4_API_KEY_STORE_FILE));
+
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return EPAM_API_MAP;
+	}
+
 	/**
 	 * method to be used by the web application since file name cannot be passed as
 	 * the resource files are expected to be in the jar directory.
@@ -69,9 +108,9 @@ final public class CdbConnectionMgr {
 	// source
 	@SuppressWarnings("restriction")
 	private OracleDataSource getConnectionPool(CdbProperties dbProperties, String dbName) throws SQLException {
-		
+
 		Map<String, String> epamAPIMap = new HashMap<String, String>();
-		
+
 		String dburl1 = dbProperties.getDatabaseURL();
 		if (dburl1 == null || dburl1.length() < 1)
 			throw new SQLException("CdbConnectionMgr.getConnection(). Error - No database url specified");
@@ -82,38 +121,36 @@ final public class CdbConnectionMgr {
 
 		OracleDataSource ods = new OracleDataSource();
 
-		// mLogger.info("Decrypted password is CdbConnectionMgr " + decodePwd);
-
-		// Modified by Biswa for Oracle Fast Connection Failover
 		ods.setURL(dburl1);
 		ods.setUser(userName);
+
 		String pswd = dbProperties.getPassword();
-		//mLogger.info("EPam.." + epamAPIMap + ":" + pswd);
+		mLogger.debug("EPam.." + epamAPIMap + ":" + pswd);
 		if (pswd == null || pswd.length() < 1) {
 
 			String epamSyetemName = dbProperties.getEpamSystemName();
-			if (epamSyetemName == null || epamSyetemName.length() < 1)
+			if (epamSyetemName == null || epamSyetemName.length() < 1) {
+				mLogger.error("Exception occured at getEpamApiPaswword...." );
 				throw new SQLException(
 						"CdbConnectionMgr.getConnection(). Error - No database Epam System Name specified in ");
+			}
 
 			epamAPIMap.put("EPAM_SYSTEM_NAME", epamSyetemName);
 			epamAPIMap.put("EPAM_ACCOUNT_NAME", userName);
 			try {
-				pswd = C4EpamAPIPassword.getEpamApiPaswword(epamAPIMap);
-				if (pswd == null || pswd.length() < 1)
-					throw new SQLException(
-							"CdbConnectionMgr.getConnection(). Error - No database password specified ");
+				pswd = C4EpamApi.getEpamApiPaswword(epamAPIMap);
+				if (pswd == null || pswd.length() < 1) {
+					mLogger.error("Exception occured at getEpamApiPaswword...." );
+					throw new SQLException("CdbConnectionMgr.getConnection(). Error - No database password specified ");
+				}
 			} catch (APIException e) {
-				mLogger.error("Exception occured at getEpamApiPaswword...."
+				mLogger.error("Exception occured at getEpamApiPaswword...." + e.getMessage());
+				throw new SQLException("Exception occured at getEpamApiPaswword.... - No database password specified "
 						+ e.getMessage());
-				throw new SQLException(
-						"Exception occured at getEpamApiPaswword.... - No database password specified "
-								+ e.getMessage());
 			}
 		} else {
 			if (pswd == null || pswd.length() < 1)
-				throw new SQLException(
-						"CdbConnectionMgr.getConnection(). Error - No database password specified ");
+				throw new SQLException("CdbConnectionMgr.getConnection(). Error - No database password specified ");
 
 			String encryptedPwd = null;
 			byte[] decodeResult;
@@ -121,7 +158,7 @@ final public class CdbConnectionMgr {
 				decodeResult = new BASE64Decoder().decodeBuffer(pswd);
 				encryptedPwd = new String(decodeResult);
 				pswd = encryptedPwd;
-				mLogger.info("DB passowrd decrypt is done for Username="+userName);
+				mLogger.info("DB passowrd decrypt is done for Username=" + userName);
 			} catch (IOException e) {
 				mLogger.error("Error occured at Decode th DB passowrds");
 			}
@@ -167,7 +204,7 @@ final public class CdbConnectionMgr {
 					+ dbProperties.getNodeSecondary() + ":" + dbProperties.getONSPort();
 		}
 
-		//mLogger.info("ons string: " + ons);
+		// mLogger.info("ons string: " + ons);
 		// ods.setONSConfiguration(ons); /*setting for ONS event */
 
 		// To avoid duplicate cache name error when application loads the pools multiple
@@ -177,7 +214,7 @@ final public class CdbConnectionMgr {
 		return ods;
 	}
 
-		private OracleDataSource getDbCache(String dbName) throws Exception {
+	private OracleDataSource getDbCache(String dbName) throws Exception {
 		OracleDataSource dataSource = (OracleDataSource) htDataSourceList.get(dbName);
 		// RBY - Start
 		try {
@@ -227,7 +264,7 @@ final public class CdbConnectionMgr {
 				c = dataStrore.getConnection();
 			}
 		} catch (Exception ce) { // this case is pool does not existe in our list
-			throw new SQLException(ce.getMessage());
+			throw new SQLException(ce.getMessage() + ":dbName=" + dbName);
 		}
 
 		return c;

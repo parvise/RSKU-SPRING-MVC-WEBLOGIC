@@ -21,14 +21,30 @@ public class RSkuRequestController {
 	@Autowired
 	private C4CostProcessingService validateC4RskuRequestService;
 
-	@RequestMapping(value = "/getC4Cost", produces = "application/json", method = RequestMethod.POST)
-	public ResponseEntity<Object> createC4RskuRequest(@RequestBody RSkuRequest request) {
+	@RequestMapping(value = "/getC4RskuCost", produces = "application/json", method = RequestMethod.POST)
+	public ResponseEntity<Object> getC4RskuCost(@RequestBody RSkuRequest request) throws Exception {
 
-		mLogger.info("****************** SERVICE STARTS **********************************");
+		long start = System.currentTimeMillis();
 		mLogger.info("Accessing C4 RSKU Request service........ ");
 
-		Object obj = validateC4RskuRequestService.validateRskuRequest(request);
+		Object obj = validateC4RskuRequestService.validateRskuRequest(request, true);
+		long end = System.currentTimeMillis();
+		mLogger.info("################################ SERVICE ENDS ################ " + (end - start) / 1000);
 
 		return new ResponseEntity<Object>(obj, HttpStatus.OK);
 	}
+
+	@RequestMapping(value = "/getC4ExplicitMccsCost", produces = "application/json", method = RequestMethod.POST)
+	public ResponseEntity<Object> getC4ExplicitMccsCost(@RequestBody RSkuRequest request) throws Exception {
+
+		long start = System.currentTimeMillis();
+		mLogger.info("Accessing C4 Explicit MCC cost Request service........ ");
+
+		Object obj = validateC4RskuRequestService.validateRskuRequest(request, false);
+		long end = System.currentTimeMillis();
+		mLogger.info("################################ SERVICE ENDS ################ " + (end - start) / 1000);
+
+		return new ResponseEntity<Object>(obj, HttpStatus.OK);
+	}
+
 }

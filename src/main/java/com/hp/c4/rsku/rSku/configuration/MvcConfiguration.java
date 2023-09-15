@@ -30,8 +30,6 @@ public class MvcConfiguration extends WebMvcConfigurerAdapter {
 
 	@Bean
 	public String dummy() {
-
-		System.out.println("Dummy Created");
 		return "Welcome Dummy";
 	}
 	

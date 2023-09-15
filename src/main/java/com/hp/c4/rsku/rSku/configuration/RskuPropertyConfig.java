@@ -9,14 +9,19 @@ import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 
 @Configuration
 
-// ITG
+ // ITG
 @PropertySource(value = { "classpath:application.properties", "file:/c4/apps/epam/property/epam_config.properties",
 		"file:/opt/sasuapps/c4/domain/c4/applications/rSku/c4RskuConfig.properties" })
 
 ////Local 
 //@PropertySource(value = { "classpath:application.properties",
-//"file:D:\\Pervez\\C4\\EPAM\\API Samples\\c4RskuConfig.properties",
-//"file:D:\\Pervez\\C4\\EPAM\\API Samples\\epam_config.properties"})
+//		"file:D:\\Pervez\\C4\\EPAM\\API Samples\\ITG\\c4RskuConfig.properties",
+//		"file:D:\\Pervez\\C4\\EPAM\\API Samples\\ITG\\epam_config.properties" })
+
+////PRO 
+//@PropertySource(value = { "classpath:application.properties",
+//		"file:D:\\Pervez\\C4\\EPAM\\API Samples\\PRO\\c4RskuConfig.properties",
+//		"file:D:\\Pervez\\C4\\EPAM\\API Samples\\PRO\\epam_config.properties" })
 
 public class RskuPropertyConfig {
 
